@@ -7,14 +7,23 @@
 # echo "Sincronizando correos..."
 # 
 # 1.1 Refrescar Token OAuth2 (Microsoft)
-# Asume que el archivo de token se llama 'microsoft_token.gpg'
-TOKEN_FILE="microsoft_token.gpg"
+# Buscamos el token en el directorio actual o en el home
+TOKEN_FILE="microsoft.token"
+USER_HOME_TOKEN="$HOME/microsoft.token"
+
 if [ -f "$TOKEN_FILE" ]; then
-    echo "Verificando/Refrescando token OAuth2..."
-    # Ejecutamos el script para que refresque el token si es necesario (la salida stdout es el token, la silenciamos)
-    python3 mutt_oauth2.py --verbose "$TOKEN_FILE" > /dev/null
+    TARGET_TOKEN="$TOKEN_FILE"
+elif [ -f "$USER_HOME_TOKEN" ]; then
+    TARGET_TOKEN="$USER_HOME_TOKEN"
 else
-    echo "AVISO: No se encontró el archivo de token $TOKEN_FILE. Saltando refresco."
+    TARGET_TOKEN=""
+fi
+
+if [ -n "$TARGET_TOKEN" ]; then
+    echo "Verificando/Refrescando token OAuth2 ($TARGET_TOKEN)..."
+    python3 mutt_oauth2.py --verbose "$TARGET_TOKEN" > /dev/null
+else
+    echo "AVISO: No se encontró 'microsoft.token' en . ni en $HOME. Saltando refresco."
 fi
 
 # mbsync -a
