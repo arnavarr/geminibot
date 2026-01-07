@@ -1,0 +1,18 @@
+# Dashboard Bot Docker Compose Configuration
+version: '3.8'
+
+services:
+  dashboard-bot:
+    build: .
+    container_name: dashboard-bot
+    env_file:
+      - .env
+    volumes:
+      # Mount artifacts directory for persistence
+      - ./artifacts:/app/artifacts
+      # Mount memory file for persistence
+      - ./agent_memory.json:/app/agent_memory.json
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Override the default task via environment
+    # command: ["python", "agent.py", "Create today's daily note"]

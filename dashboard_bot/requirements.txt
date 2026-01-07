@@ -1,0 +1,19 @@
+# Dashboard Bot Dependencies
+# Core Google GenAI and Configuration
+google-genai
+pydantic
+pydantic-settings
+python-dotenv
+
+# Jira Integration
+requests>=2.31.0
+
+# Microsoft Authentication (for Outlook)
+msal>=1.24.0
+
+# Testing
+pytest>=7.4.0
+
+# MCP (Model Context Protocol) Integration
+# Install with: pip install 'mcp[cli]'
+mcp[cli]>=1.0.0

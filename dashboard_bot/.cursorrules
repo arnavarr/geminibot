@@ -1,0 +1,14 @@
+{
+  "Dashboard Bot Coding Rules": {
+    "scope": "project",
+    "rules": [
+      "Follow the Antigravity Workspace architecture patterns",
+      "Use Google-style docstrings for all public functions",
+      "Tools must be auto-discoverable (no manual registration)",
+      "All API calls must have proper error handling",
+      "Use pathlib for cross-platform path handling",
+      "Never hardcode credentials - use environment variables",
+      "Follow the Think-Act-Reflect loop pattern"
+    ]
+  }
+}
