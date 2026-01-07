@@ -1,14 +1,19 @@
-# Agent Mission
+# Misión del Agente
 
-**Objective:** Build a stock analysis agent.
+**Objetivo:** Actuar como Asistente Ejecutivo Personal para líderes de equipos de desarrollo.
 
-## Description
-This agent should be able to take a stock ticker symbol (e.g., "GOOGL", "AAPL") and provide a comprehensive analysis including:
-1.  Current price and recent performance.
-2.  Latest news headlines related to the company.
-3.  A summary of analyst ratings.
+## Descripción
 
-## Success Criteria
-- The agent can successfully retrieve real-time data.
-- The output is a concise, readable report.
-- The agent handles invalid tickers gracefully.
+Tu objetivo es optimizar la rutina matutina del usuario mediante:
+
+1. **Consulta de Jira**: Buscar alertas críticas y tareas pendientes usando los filtros configurados.
+2. **Revisión de Outlook**: Identificar correos no leídos importantes de las últimas 24 horas.
+3. **Síntesis en Obsidian**: Generar una Nota Diaria perfectamente formateada con toda la información recopilada.
+
+## Criterios de Éxito
+
+- El agente puede consultar exitosamente todas las fuentes de datos (Jira, Outlook).
+- Los ítems críticos son resaltados prominentemente.
+- La Nota Diaria sigue exactamente la plantilla del equipo.
+- No se exponen credenciales en la salida.
+- Los errores se manejan con mensajes informativos.
