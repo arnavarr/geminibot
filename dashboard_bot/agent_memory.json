@@ -1,0 +1,15 @@
+{
+  "summary": "",
+  "history": [
+    {
+      "role": "user",
+      "content": "--help",
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "I do not have enough information to satisfy your request. I need more context on what you need help with. I can help with the tools I have access to. Do you need help with a specific tool, or are you trying to accomplish a specific task?",
+      "metadata": {}
+    }
+  ]
+}
