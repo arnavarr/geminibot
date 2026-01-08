@@ -118,9 +118,19 @@ def _get_graph_access_token() -> Optional[str]:
         result = app.acquire_token_silent(graph_scopes, account=accounts[0])
         if result and "access_token" in result:
             return result["access_token"]
+            
+    # Attempt Interactive Browser Auth first (better UX)
+    print("   🔐 Attempting interactive browser authentication...")
+    try:
+        result = app.acquire_token_interactive(scopes=graph_scopes)
+        if result and "access_token" in result:
+            print("   ✅ Interactive authentication successful")
+            return result["access_token"]
+    except Exception as e:
+        print(f"   ⚠️ Interactive auth failed/unavailable: {e}")
+        print("   🔄 Falling back to Device Code flow...")
     
-    # If no cached token, use device code flow
-    # Note: This requires user interaction in a browser
+    # If interactive fails, use device code flow
     print("   🔐 Initiating device code authentication...")
     print("       (Follow the instructions to authenticate)")
     
