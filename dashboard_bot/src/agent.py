@@ -1,508 +1,226 @@
+"""
+DataCollector - Script de extracción de datos determinista.
+
+Reemplaza el agente basado en LLM por un script que:
+1. Obtiene tareas de Jira
+2. Obtiene correos de Outlook
+3. Genera JSON estructurado (artifacts/context_payload.json)
+4. Crea nota Markdown (artifacts/daily_context.md y Obsidian)
+"""
+
 import json
-import time
 import os
 import sys
-import asyncio
-import inspect
-import importlib.util
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 # Ensure project root is on sys.path when running this file directly
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from google import genai
-
 from src.config import settings
-from src.memory import MemoryManager
+from src.tools.jira_tools import get_all_my_issues
+from src.tools.email_tools import fetch_recent_emails, _get_graph_access_token, _fetch_emails_from_graph, MSAL_AVAILABLE
+from src.tools.obsidian_tools import write_daily_note
 
 
-class GeminiAgent:
+class DataCollector:
     """
-    A production-grade agent wrapper for Gemini 3.
-    Implements the Think-Act-Reflect loop with MCP integration.
-
-    The agent supports two types of tools:
-    1. Local tools: Python functions in src/tools/ directory
-    2. MCP tools: Tools from connected MCP servers (when MCP_ENABLED=true)
-
-    MCP tools are transparently integrated and appear alongside local tools,
-    allowing the agent to use external services and capabilities seamlessly.
+    Recolector de datos determinista para dashboard personal.
+    
+    Extrae información de Jira y Outlook, genera archivos de contexto
+    para uso posterior en conversaciones con LLMs externos.
     """
 
     def __init__(self):
         self.settings = settings
-        self.memory = MemoryManager()
-        self.mcp_manager = None  # Will be initialized if MCP is enabled
-        self.use_openai_backend = False  # Use OpenAI-compatible backend when configured
+        self.artifacts_dir = PROJECT_ROOT / "artifacts"
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"📊 DataCollector inicializado")
+        print(f"   📁 Artifacts: {self.artifacts_dir}")
 
-        # Dynamically load all tools from src/tools/ directory
-        self.available_tools: Dict[str, Callable[..., Any]] = self._load_tools()
+    def _get_jira_tasks(self) -> List[Dict[str, Any]]:
+        """Obtiene todas las tareas de Jira del usuario actual."""
+        print("\n📋 Obteniendo tareas de Jira...")
+        tasks = get_all_my_issues()
+        return tasks
 
-        # Initialize MCP integration if enabled
-        if self.settings.MCP_ENABLED:
-            self._initialize_mcp()
-
-        print(
-            f"🤖 Initializing {self.settings.AGENT_NAME} with model {self.settings.GEMINI_MODEL_NAME}..."
-        )
-        print(
-            f"   📦 Discovered {len(self.available_tools)} tools: {', '.join(list(self.available_tools.keys())[:10])}{'...' if len(self.available_tools) > 10 else ''}"
-        )
-
-        # Initialize the GenAI client if credentials are available. Some test
-        # environments do not provide a Google API key, so fall back to a
-        # lightweight dummy client that returns a canned response. This keeps
-        # the agent usable in tests without external network access.
-        # When running under pytest, prefer a dummy client to keep tests
-        # deterministic even if an API key is present in the environment.
-        running_under_pytest = (
-            "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
-        )
-
-        if running_under_pytest:
-
-            class _DummyClient:
-                class _Models:
-                    def generate_content(self, model, contents):
-                        class _R:
-                            text = "I have completed the task"
-
-                        return _R()
-
-                def __init__(self):
-                    self.models = self._Models()
-
-            self.client = _DummyClient()
-        else:
-            try:
-                # If a Google API key is provided, prefer Gemini.
-                if self.settings.GOOGLE_API_KEY:
-                    self.client = genai.Client(api_key=self.settings.GOOGLE_API_KEY)
-                else:
-                    # If no Google key but an OpenAI-compatible endpoint is set,
-                    # route generations through the OpenAI proxy (e.g., local Ollama).
-                    if self.settings.OPENAI_BASE_URL:
-                        self.use_openai_backend = True
-                        print(
-                            f"🔄 Using OpenAI-compatible backend at {self.settings.OPENAI_BASE_URL} "
-                            f"with model {self.settings.OPENAI_MODEL}"
-                        )
-                        self.client = None  # Not used when proxying to OpenAI
-                    else:
-                        raise ValueError("No GOOGLE_API_KEY or OPENAI_BASE_URL configured")
-            except Exception as e:
-                print(f"⚠️ genai client not initialized: {e}")
-
-                class _DummyClientFallback:
-                    class _Models:
-                        def generate_content(self, model, contents):
-                            class _R:
-                                text = "I have completed the task"
-
-                            return _R()
-
-                    def __init__(self):
-                        self.models = self._Models()
-
-                self.client = _DummyClientFallback()
-
-    def _initialize_mcp(self) -> None:
-        """
-        Initialize MCP (Model Context Protocol) integration.
-
-        This method:
-        1. Creates an MCP client manager
-        2. Connects to configured MCP servers
-        3. Discovers and registers MCP tools
-        4. Makes MCP tools available alongside local tools
-        """
+    def _get_emails(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Obtiene correos recientes de Outlook."""
+        print("\n📧 Obteniendo correos de Outlook...")
+        
+        if not MSAL_AVAILABLE:
+            print("   ⚠️ MSAL no instalado. Saltando correos.")
+            return []
+        
+        if not self.settings.MS_CLIENT_ID:
+            print("   ⚠️ MS_CLIENT_ID no configurado. Saltando correos.")
+            return []
+        
         try:
-            from src.mcp_client import MCPClientManagerSync
-
-            print("🔌 Initializing MCP integration...")
-
-            # Create and initialize the MCP manager
-            self.mcp_manager = MCPClientManagerSync()
-            self.mcp_manager.initialize()
-
-            # Load MCP tools into available_tools
-            mcp_tools = self.mcp_manager.get_all_tools_as_callables()
-
-            if mcp_tools:
-                self.available_tools.update(mcp_tools)
-                print(f"   🔧 Loaded {len(mcp_tools)} MCP tools")
-
-        except ImportError as e:
-            print(f"   ⚠️ MCP library not installed: {e}")
-            print("      To enable MCP, run: pip install 'mcp[cli]'")
+            token = _get_graph_access_token()
+            if not token:
+                print("   ⚠️ No se pudo obtener token de acceso.")
+                return []
+            
+            emails_raw = _fetch_emails_from_graph(token, limit)
+            
+            # Transform to simpler format
+            emails = []
+            for email in emails_raw:
+                emails.append({
+                    "subject": email.get("subject", "(Sin asunto)"),
+                    "from": email.get("from", {}).get("emailAddress", {}).get("address", "Unknown"),
+                    "received": email.get("receivedDateTime"),
+                    "preview": email.get("bodyPreview", "")[:200]
+                })
+            
+            print(f"   ✅ Obtenidos {len(emails)} correos")
+            return emails
+            
         except Exception as e:
-            print(f"   ⚠️ Failed to initialize MCP: {e}")
+            print(f"   ❌ Error obteniendo correos: {e}")
+            return []
 
-    def _load_tools(self) -> Dict[str, Callable[..., Any]]:
-        """
-        Automatically discover and load tools from src/tools/ directory.
+    def _generate_context_json(self, tasks: List[Dict], emails: List[Dict]) -> Dict[str, Any]:
+        """Genera el payload JSON estructurado."""
+        payload = {
+            "timestamp": datetime.now().isoformat(),
+            "generated_by": "DataCollector",
+            "jira_tasks": tasks,
+            "emails": emails,
+            "summary": {
+                "total_tasks": len(tasks),
+                "total_emails": len(emails),
+                "tasks_by_status": self._count_by_field(tasks, "status"),
+                "tasks_by_priority": self._count_by_field(tasks, "priority")
+            }
+        }
+        return payload
 
-        Scans the tools directory for Python modules, imports them dynamically,
-        and registers any public functions (not starting with _) as available tools.
-        This enables the "zero-config" philosophy - just drop a Python file into
-        src/tools/ and it becomes available to the agent.
+    def _count_by_field(self, items: List[Dict], field: str) -> Dict[str, int]:
+        """Cuenta items por un campo específico."""
+        counts: Dict[str, int] = {}
+        for item in items:
+            value = item.get(field) or "Sin especificar"
+            counts[value] = counts.get(value, 0) + 1
+        return counts
 
-        Returns:
-            Dictionary mapping tool names to callable functions.
-        """
-        tools = {}
-
-        # Get the src/tools directory path relative to this file
-        tools_dir = Path(__file__).parent / "tools"
-
-        if not tools_dir.exists():
-            print(f"⚠️ Tools directory not found: {tools_dir}")
-            return tools
-
-        # Iterate through all Python files in the tools directory
-        for tool_file in tools_dir.glob("*.py"):
-            # Skip __init__.py and private modules
-            if tool_file.name.startswith("_"):
-                continue
-
-            module_name = tool_file.stem
-
-            try:
-                # Dynamically import the module
-                spec = importlib.util.spec_from_file_location(
-                    f"src.tools.{module_name}", tool_file
-                )
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-
-                    # Find all public functions in the module
-                    for name, obj in inspect.getmembers(module, inspect.isfunction):
-                        # Only register public functions defined in this module
-                        if (
-                            not name.startswith("_")
-                            and obj.__module__ == f"src.tools.{module_name}"
-                        ):
-                            tools[name] = obj
-                            print(f"   ✓ Loaded tool: {name} from {module_name}.py")
-
-            except Exception as e:
-                print(f"   ⚠️ Failed to load tools from {tool_file.name}: {e}")
-
-        return tools
-
-    def _load_context(self) -> str:
-        """
-        Automatically load and concatenate all markdown files from .context/ directory.
-
-        This allows users to add project-specific knowledge, coding standards, or
-        custom rules by simply dropping .md files into .context/. The content is
-        automatically injected into the agent's system prompt.
-
-        Returns:
-            Concatenated content of all .md files in .context/ directory.
-        """
-        context_parts = []
-
-        # Get the .context directory path relative to project root
-        # Navigate up from src/ to project root
-        context_dir = Path(__file__).parent.parent / ".context"
-
-        if not context_dir.exists():
-            return ""
-
-        # Load all markdown files
-        for context_file in sorted(context_dir.glob("*.md")):
-            try:
-                content = context_file.read_text(encoding="utf-8")
-                context_parts.append(f"\n--- {context_file.name} ---\n{content}")
-            except Exception as e:
-                print(f"   ⚠️ Failed to load context from {context_file.name}: {e}")
-
-        if context_parts:
-            print(f"   📚 Loaded context from {len(context_parts)} file(s)")
-
-        return "\n".join(context_parts)
-
-    def _get_tool_descriptions(self) -> str:
-        """
-        Dynamically builds a list of available tools and their docstrings for prompt injection.
-        """
-        descriptions: List[str] = []
-        for name, fn in self.available_tools.items():
-            doc = (fn.__doc__ or "No description provided.").strip().replace("\n", " ")
-            descriptions.append(f"- {name}: {doc}")
-        return "\n".join(descriptions)
-
-    def _format_context_messages(self, context_messages: List[Dict[str, Any]]) -> str:
-        """
-        Flattens structured context into a plain-text prompt block.
-        """
+    def _generate_markdown(self, tasks: List[Dict], emails: List[Dict]) -> str:
+        """Genera el contenido Markdown para la nota diaria."""
+        today = datetime.now()
         lines = [
-            f"{msg.get('role', '').upper()}: {msg.get('content', '')}"
-            for msg in context_messages
+            f"# Contexto del día - {today.strftime('%Y-%m-%d')}",
+            "",
+            f"*Generado automáticamente el {today.strftime('%d/%m/%Y a las %H:%M')}*",
+            "",
         ]
+        
+        # Jira Tasks Section
+        lines.append("## 📋 Tareas de Jira")
+        lines.append("")
+        
+        if tasks:
+            # Group by status
+            by_status: Dict[str, List[Dict]] = {}
+            for task in tasks:
+                status = task.get("status") or "Sin estado"
+                if status not in by_status:
+                    by_status[status] = []
+                by_status[status].append(task)
+            
+            for status, status_tasks in by_status.items():
+                lines.append(f"### {status} ({len(status_tasks)})")
+                lines.append("")
+                for task in status_tasks:
+                    key = task.get("key", "???")
+                    summary = task.get("summary", "Sin resumen")
+                    priority = task.get("priority") or "N/A"
+                    lines.append(f"- **[{key}]** {summary} *(Prioridad: {priority})*")
+                lines.append("")
+        else:
+            lines.append("*No se encontraron tareas asignadas.*")
+            lines.append("")
+        
+        # Emails Section
+        lines.append("## 📧 Correos Recientes")
+        lines.append("")
+        
+        if emails:
+            for i, email in enumerate(emails, 1):
+                subject = email.get("subject", "(Sin asunto)")
+                sender = email.get("from", "Desconocido")
+                preview = email.get("preview", "")[:100]
+                lines.append(f"{i}. **{subject}**")
+                lines.append(f"   - De: {sender}")
+                if preview:
+                    lines.append(f"   - Vista previa: {preview}...")
+                lines.append("")
+        else:
+            lines.append("*No hay correos no leídos recientes.*")
+            lines.append("")
+        
+        # Footer
+        lines.append("---")
+        lines.append("")
+        lines.append("*Este archivo es contexto para usar con Gemini o ChatGPT.*")
+        
         return "\n".join(lines)
 
-    def _call_gemini(self, prompt: str) -> str:
-        """Lightweight wrapper around the Gemini content generation call."""
-        if self.use_openai_backend:
-            try:
-                from src.tools.openai_proxy import call_openai_chat
-                return call_openai_chat(
-                    prompt=prompt,
-                    model=self.settings.OPENAI_MODEL,
-                )
-            except ImportError:
-                return "[openai-backend-error] openai_proxy module not available"
-            except Exception as exc:
-                return f"[openai-backend-error] {exc}"
-
-        response_obj = self.client.models.generate_content(
-            model=self.settings.GEMINI_MODEL_NAME,
-            contents=prompt,
-        )
-        # Safely handle cases where the API or dummy client returns None or a structure without a text attribute
-        text = getattr(response_obj, "text", None)
-        if text is None:
-            # Try an alternative common attribute
-            text = getattr(response_obj, "content", None)
-        if text is None:
-            # Fallback: attempt to stringify the whole response object, or return empty string
-            try:
-                return str(response_obj).strip()
-            except Exception:
-                return ""
-        # Ensure we have a string to call strip() on
-        if not isinstance(text, str):
-            try:
-                text = json.dumps(text)
-            except Exception:
-                text = str(text)
-        return text.strip()
-
-    def _extract_tool_call(
-        self, response_text: str
-    ) -> Tuple[Optional[str], Dict[str, Any]]:
+    def run(self):
         """
-        Parses a model response to detect a tool invocation request.
-
-        Supports two patterns:
-        1) JSON object: {"action": "tool_name", "args": {...}}
-        2) Plain text line starting with 'Action: <tool_name>'
+        Ejecuta la recolección completa de datos.
+        
+        1. Obtiene tareas de Jira
+        2. Obtiene correos de Outlook
+        3. Guarda JSON en artifacts/context_payload.json
+        4. Genera nota Markdown
+        5. Escribe en Obsidian y artifacts/daily_context.md
         """
-        cleaned = response_text.strip()
-
-        try:
-            payload = json.loads(cleaned)
-            if isinstance(payload, dict):
-                action = payload.get("action") or payload.get("tool")
-                args = payload.get("args") or payload.get("input") or {}
-                if action:
-                    return str(action), args if isinstance(args, dict) else {}
-        except json.JSONDecodeError:
-            pass
-
-        for line in cleaned.splitlines():
-            if line.lower().startswith("action:"):
-                action = line.split(":", 1)[1].strip()
-                if action:
-                    return action, {}
-
-        return None, {}
-
-    def summarize_memory(
-        self, old_messages: List[Dict[str, Any]], previous_summary: str
-    ) -> str:
-        """
-        Summarize older history into a concise buffer using Gemini.
-        """
-        history_block = "\n".join(
-            [
-                f"- {m.get('role', 'unknown')}: {m.get('content', '')}"
-                for m in old_messages
-            ]
-        )
-        prompt = (
-            "You are an expert conversation summarizer for an autonomous agent.\n"
-            "Goals:\n"
-            "1) Preserve decisions, intents, constraints, and outcomes.\n"
-            "2) Omit small talk and low-signal chatter.\n"
-            "3) Keep the summary under 120 words and in plain text.\n"
-            "4) Maintain continuity so future turns understand what has already happened.\n\n"
-            f"Previous summary:\n{previous_summary or '[none]'}\n\n"
-            "Messages to summarize (oldest first):\n"
-            f"{history_block}\n\n"
-            "Return only the new merged summary."
-        )
-
-        # Use the centralized wrapper that safely handles missing/None responses
-        return self._call_gemini(prompt)
-
-    def think(self, task: str) -> str:
-        """
-        Simulates the 'Deep Think' process of Gemini 3.
-        """
-        # Load context knowledge from .context/ directory
-        context_knowledge = self._load_context()
-
-        # Inject context into system prompt
-        system_prompt = (
-            f"{context_knowledge}\n\n"
-            "You are a focused agent following the Artifact-First protocol. Stay concise and tactical."
-        )
-
-        context_window = self.memory.get_context_window(
-            system_prompt=system_prompt,
-            max_messages=10,
-            summarizer=self.summarize_memory,
-        )
-
-        print(f"\n🤔 <thought> Analyzing task: '{task}'")
-        print(f"   - Loaded context messages: {len(context_window)}")
-        print("   - Checking mission context...")
-        print("   - Identifying necessary tools...")
-        print("   - Formulating execution plan...")
-        print("</thought>\n")
-
-        time.sleep(1)
-        return "Plan formulated."
-
-    def act(self, task: str) -> str:
-        """
-        Executes the task using available tools and generates a real response.
-        """
-        # 1) Record user input
-        self.memory.add_entry("user", task)
-
-        # 2) Think
-        self.think(task)
-
-        # 3) Tool dispatch entry point
-        print(f"[TOOLS] Executing tools for: {task}")
-        tool_list = self._get_tool_descriptions()
-
-        system_prompt = (
-            "You are an expert AI agent following the Think-Act-Reflect loop.\n"
-            "You have access to the following tools:\n"
-            f"{tool_list}\n\n"
-            "If you need a tool, respond ONLY with a JSON object using the schema:\n"
-            '{"action": "<tool_name>", "args": {"param": "value"}}\n'
-            "If no tool is needed, reply directly with the final answer."
-        )
-
-        try:
-            context_messages = self.memory.get_context_window(
-                system_prompt=system_prompt,
-                max_messages=10,
-                summarizer=self.summarize_memory,
-            )
-            formatted_context = self._format_context_messages(context_messages)
-            initial_prompt = f"{formatted_context}\n\nCurrent Task: {task}"
-
-            print("💬 Sending request to Gemini...")
-            first_reply = self._call_gemini(initial_prompt)
-            tool_name, tool_args = self._extract_tool_call(first_reply)
-
-            final_response = first_reply
-
-            if tool_name:
-                tool_fn = self.available_tools.get(tool_name)
-                if not tool_fn:
-                    observation = f"Requested tool '{tool_name}' is not registered."
-                else:
-                    try:
-                        observation = tool_fn(**tool_args)
-                    except TypeError as exc:
-                        observation = f"Error executing tool '{tool_name}': {exc}"
-                    except Exception as exc:
-                        observation = f"Unexpected error in tool '{tool_name}': {exc}"
-
-                # Record intermediate reasoning and observation
-                self.memory.add_entry("assistant", first_reply)
-                self.memory.add_entry("tool", f"{tool_name} output: {observation}")
-
-                # Refresh context to include tool feedback before final answer
-                context_messages = self.memory.get_context_window(
-                    system_prompt=system_prompt,
-                    max_messages=10,
-                    summarizer=self.summarize_memory,
-                )
-                formatted_context = self._format_context_messages(context_messages)
-                follow_up_prompt = (
-                    f"{formatted_context}\n\n"
-                    f"Tool '{tool_name}' observation: {observation}\n"
-                    "Use the observation above to craft the final answer for the user. "
-                    "Do not request additional tool calls."
-                )
-                print(f"💬 Sending follow-up with observation from '{tool_name}'...")
-                final_response = self._call_gemini(follow_up_prompt)
-
-            self.memory.add_entry("assistant", final_response)
-            return final_response
-
-        except Exception as e:
-            response = f"Error generating response: {str(e)}"
-            print(f"❌ API Error: {e}")
-            return response
-
-    def reflect(self):
-        """
-        Review past actions to improve future performance.
-        """
-        history = self.memory.get_history()
-        print(f"Reflecting on {len(history)} past interactions...")
-
-    def run(self, task: str):
-        """Main entry point for the agent."""
-        print(f"🚀 Starting Task: {task}")
-        result = self.act(task)
-        print(f"📦 Result: {result}")
-        self.reflect()
-
-    def shutdown(self) -> None:
-        """
-        Gracefully shutdown the agent and cleanup resources.
-
-        This method should be called when the agent is no longer needed,
-        especially when MCP integration is enabled to properly close
-        server connections.
-        """
-        if self.mcp_manager:
-            print("🔌 Shutting down MCP connections...")
-            self.mcp_manager.shutdown()
-        print("👋 Agent shutdown complete.")
-
-    def get_mcp_status(self) -> Dict[str, Any]:
-        """
-        Get the status of MCP integration.
-
-        Returns:
-            Dictionary with MCP status information including:
-            - enabled: Whether MCP is enabled in settings
-            - initialized: Whether MCP manager is initialized
-            - servers: Status of each connected server
-        """
-        if not self.mcp_manager:
-            return {
-                "enabled": self.settings.MCP_ENABLED,
-                "initialized": False,
-                "servers": {},
-            }
-        return self.mcp_manager.get_status()
+        print("\n" + "=" * 60)
+        print("🚀 Iniciando recolección de datos...")
+        print("=" * 60)
+        
+        # 1. Collect data
+        tasks = self._get_jira_tasks()
+        emails = self._get_emails(limit=10)
+        
+        # 2. Generate JSON payload
+        print("\n📦 Generando payload JSON...")
+        payload = self._generate_context_json(tasks, emails)
+        
+        json_path = self.artifacts_dir / "context_payload.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        print(f"   ✅ Guardado: {json_path}")
+        
+        # 3. Generate Markdown
+        print("\n📝 Generando nota Markdown...")
+        markdown_content = self._generate_markdown(tasks, emails)
+        
+        # Save to artifacts
+        md_path = self.artifacts_dir / "daily_context.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+        print(f"   ✅ Guardado: {md_path}")
+        
+        # 4. Write to Obsidian
+        if self.settings.OBSIDIAN_VAULT_PATH:
+            print("\n📓 Escribiendo en Obsidian...")
+            result = write_daily_note(markdown_content)
+            print(f"   {result}")
+        else:
+            print("\n⚠️ OBSIDIAN_VAULT_PATH no configurado. Nota no escrita en Obsidian.")
+        
+        # 5. Final message
+        print("\n" + "=" * 60)
+        print("✅ Datos exportados a artifacts/context_payload.json y nota creada en Obsidian.")
+        print("=" * 60)
 
 
 if __name__ == "__main__":
-    # Allow overriding the task via CLI args or AGENT_TASK env var
-    task = " ".join(sys.argv[1:]).strip() or os.environ.get(
-        "AGENT_TASK", "Create today's daily note with my Jira tasks and emails"
-    )
-
-    agent = GeminiAgent()
-    try:
-        agent.run(task)
-    finally:
-        agent.shutdown()
+    collector = DataCollector()
+    collector.run()

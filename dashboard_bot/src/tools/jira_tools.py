@@ -37,17 +37,9 @@ def search_jira_issues(jql: str) -> str:
     if not settings.JIRA_EMAIL or not settings.JIRA_TOKEN:
         return json.dumps({"error": "JIRA_EMAIL and JIRA_TOKEN must be configured"})
     
-    # Build API URL with URL-encoded JQL
+    # Build API URL for new JQL endpoint
     base_url = settings.JIRA_URL.rstrip("/")
-    encoded_jql = quote(jql)
-    
-    # Use API v3 search endpoint with explicit fields
-    api_url = (
-        f"{base_url}/rest/api/3/search"
-        f"?jql={encoded_jql}"
-        f"&fields=key,summary,status,priority,updated,assignee"
-        f"&maxResults=50"
-    )
+    api_url = f"{base_url}/rest/api/3/search/jql"
     
     # Set up authentication (Basic Auth with API token)
     auth = (settings.JIRA_EMAIL, settings.JIRA_TOKEN)
@@ -57,13 +49,21 @@ def search_jira_issues(jql: str) -> str:
         "Content-Type": "application/json"
     }
     
+    # Request body for POST method
+    payload = {
+        "jql": jql,
+        "fields": ["key", "summary", "status", "priority", "updated", "assignee"],
+        "maxResults": 50
+    }
+    
     try:
         print(f"   🔍 Querying Jira: {jql[:50]}{'...' if len(jql) > 50 else ''}")
         
-        response = requests.get(
+        response = requests.post(
             api_url,
             auth=auth,
             headers=headers,
+            json=payload,
             timeout=30
         )
         
@@ -178,6 +178,116 @@ def get_jira_issue(issue_key: str) -> str:
         return json.dumps({"error": f"HTTP {e.response.status_code}: {e.response.text}"})
     except Exception as e:
         return json.dumps({"error": f"{type(e).__name__}: {e}"})
+
+
+def get_all_my_issues() -> List[Dict[str, Any]]:
+    """Obtiene TODAS las tareas asignadas al usuario actual.
+    
+    Ejecuta JQL: assignee = currentUser() ORDER BY updated DESC
+    No requiere parámetros de entrada (determinista).
+    
+    Returns:
+        Lista de diccionarios con información de cada tarea.
+        Cada diccionario contiene: key, summary, status, priority, description, updated.
+        Retorna lista vacía si hay error.
+        
+    Example:
+        >>> tasks = get_all_my_issues()
+        >>> [{'key': 'OD-123', 'summary': 'Fix login bug', 'status': 'In Progress', ...}]
+    """
+    # Validate configuration
+    if not settings.JIRA_URL:
+        print("   ❌ JIRA_URL not configured in environment")
+        return []
+    if not settings.JIRA_EMAIL or not settings.JIRA_TOKEN:
+        print("   ❌ JIRA_EMAIL and JIRA_TOKEN must be configured")
+        return []
+    
+    # Fixed JQL for current user's tasks
+    jql = "assignee = currentUser() ORDER BY updated DESC"
+    
+    # Build API URL for new JQL endpoint
+    base_url = settings.JIRA_URL.rstrip("/")
+    api_url = f"{base_url}/rest/api/3/search/jql"
+    
+    # Set up authentication (Basic Auth with API token)
+    auth = (settings.JIRA_EMAIL, settings.JIRA_TOKEN)
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+    # Request body for POST method
+    payload = {
+        "jql": jql,
+        "fields": ["key", "summary", "status", "priority", "updated", "assignee", "description"],
+        "maxResults": 100
+    }
+    
+    try:
+        print(f"   🔍 Obteniendo tareas de Jira (assignee = currentUser())...")
+        
+        response = requests.post(
+            api_url,
+            auth=auth,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        # Check for HTTP errors
+        response.raise_for_status()
+        
+        data = response.json()
+        issues = data.get("issues", [])
+        
+        # Extract relevant fields from each issue
+        result: List[Dict[str, Any]] = []
+        for issue in issues:
+            fields = issue.get("fields", {})
+            
+            # Safely extract nested fields
+            status_obj = fields.get("status", {})
+            priority_obj = fields.get("priority", {})
+            
+            result.append({
+                "key": issue.get("key"),
+                "summary": fields.get("summary"),
+                "status": status_obj.get("name") if status_obj else None,
+                "priority": priority_obj.get("name") if priority_obj else None,
+                "description": _extract_text_from_adf(fields.get("description")),
+                "updated": fields.get("updated"),
+            })
+        
+        print(f"   ✅ Encontradas {len(result)} tareas")
+        return result
+        
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"Jira API error: {e.response.status_code}"
+        try:
+            error_detail = e.response.json()
+            error_msg += f" - {error_detail.get('errorMessages', [e.response.text])}"
+        except (ValueError, json.JSONDecodeError):
+            error_msg += f" - {e.response.text}"
+        print(f"   ❌ {error_msg}")
+        return []
+        
+    except requests.exceptions.ConnectionError:
+        print(f"   ❌ Connection error: Unable to reach Jira at {settings.JIRA_URL}")
+        return []
+        
+    except requests.exceptions.Timeout:
+        print("   ❌ Request timed out while connecting to Jira")
+        return []
+        
+    except json.JSONDecodeError as e:
+        print(f"   ❌ Invalid JSON response from Jira: {e}")
+        return []
+        
+    except Exception as e:
+        print(f"   ❌ Unexpected error querying Jira: {type(e).__name__}: {e}")
+        return []
 
 
 def _extract_text_from_adf(adf_content: Any) -> str:

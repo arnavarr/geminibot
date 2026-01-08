@@ -1,0 +1,218 @@
+{
+  "timestamp": "2026-01-08T10:46:41.487391",
+  "generated_by": "DataCollector",
+  "jira_tasks": [
+    {
+      "key": "PRO44-88",
+      "summary": "Identificación del sponsor",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "Necesitamos identificar el sponsor para trazar el plan a seguir de cara a la presentación y comunicación de este proyecto al sector y corredores. Objetivo: movilizar al sector e involucrar a los actores",
+      "updated": "2026-01-08T10:11:03.178+0100"
+    },
+    {
+      "key": "PRO44-74",
+      "summary": "Plan de comunicaciones",
+      "status": "Backlog",
+      "priority": "Importante",
+      "description": "Objetivo: Presentar el proyecto al sector junto con las aseguradoras que están en el grupo de trabajo incluyendo a los mediadores (buscando involucrarlos y hacerlo propio). Fecha presentación: En enero (a partir del 15 de enero). Aseguradoras del grupo de trabajo: Zurich (piloto) Generali (piloto) Axa (piloto) Mapfre (piloto) Allianz Occident Inclusión mediadores: ¿A través de la patronal? ¿A través de una asociación? Otras preguntas: ¿Quién esponsoriza desde Tirea?",
+      "updated": "2025-12-09T12:56:42.415+0100"
+    },
+    {
+      "key": "CYB-62",
+      "summary": "Nueva Norma 9001:2026",
+      "status": "Pruebas",
+      "priority": "Media",
+      "description": "Estado de publicación de la nueva norma ISO 9001, prevista para el primer trimestre de 2026.",
+      "updated": "2025-12-01T11:52:06.425+0100"
+    },
+    {
+      "key": "CYB-256",
+      "summary": "Solicitar acceso a Service Now para tener inventario de activos",
+      "status": "BLOCKED",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-28T12:10:43.068+0100"
+    },
+    {
+      "key": "CYB-24",
+      "summary": "Cuestionario: miHC",
+      "status": "BLOCKED",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-28T11:34:25.242+0100"
+    },
+    {
+      "key": "CYB-750",
+      "summary": "Bloqueado por accenture / sin respuesta. Lo pide AXA",
+      "status": "Backlog",
+      "priority": "Leve",
+      "description": "",
+      "updated": "2025-11-28T11:34:08.698+0100"
+    },
+    {
+      "key": "CYB-562",
+      "summary": "Revisar Alcance SGI",
+      "status": "Pruebas",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-28T09:44:28.582+0100"
+    },
+    {
+      "key": "CYB-563",
+      "summary": "Revisar Manual de SGI",
+      "status": "Pruebas",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-28T09:44:17.912+0100"
+    },
+    {
+      "key": "CYB-564",
+      "summary": "Revisar Roles y Responsabilidades SGI",
+      "status": "Pruebas",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-28T09:44:07.030+0100"
+    },
+    {
+      "key": "CYB-21",
+      "summary": "Añadir a Arturo en los procesos de certificación",
+      "status": "Pruebas",
+      "priority": "Alta",
+      "description": "",
+      "updated": "2025-11-28T09:43:49.860+0100"
+    },
+    {
+      "key": "CYB-353",
+      "summary": "Bloqueos dinámicos",
+      "status": "Pruebas",
+      "priority": "Importante",
+      "description": "From:  RODRIGO DE LA VARA HERNANDEZ < RODRIGO.DELAVARAHERNANDEZ@telefonica.com > To:  Seguridad lógica < seguridad.logica@tirea.es >  Subject:  Bloqueos dinámicos Sent:  October 10, 2025, 13:40 PM, +02:00 Buenos días, Tras el análisis realizado sobre el periodo de una semana (muestra iniciada el 15 de septiembre), se han obtenido las siguientes conclusiones: Del total de  5.193 direcciones IP analizadas , se han identificado  693  como  maliciosas o potencialmente maliciosas , lo que representa aproximadamente un  13% . Se han detectado  IP´s con mala reputación  relacionadas con actividades de  spam , intentos de conexión no autorizados,  crawlers... En cuanto a la distribución geográfica, los principales orígenes corresponden a países en los que resulta complejo aplicar bloqueos globales o por AS, debido a su relevancia con posibles servicios o consumibles de Tirea. Países más destacados: Estados Unidos: 312 IP categorizadas Reino Unido: 90 IP categorizadas Francia: 73 IP categorizadas Sistemas Autónomos (AS) relevantes: Amazon Facebook Google Microsoft Dado que estos países y AS pueden estar vinculados a servicios o productos de o para Tirea,  se recomienda la activación de objetos dinámicos.  La granularidad y actualización continua que ofrecen las listas dinámicas de  Fortinet  las hacen especialmente adecuadas para este fin. Recomendaciones Objetos dinámicos sugeridos para bloqueo: Malicious-Malicious.Server Hurricane.Electric-Hurricane.Electric.Internet.Services Censys-Scanner Shadowserver-Scanner Cyber.Casa-Scanner Hosting-Bulletproof.Hosting ONYPHE-Scanner DigitalOcean-DigitalOcean.Platform OVHcloud-OVHcloud Shodan-Scanner ColoCrossing-ColoCrossing.Hosting.Service Nokia-Deepfield.Genome.Crawler Sistemas Autónomos (AS) recomendados para bloqueo: (Se podría reducir este listado excluyendo aquellos AS ya cubiertos por objetos dinámicos, como por ejem. Censys) CENSYS-ARIN-01 (US)  \nCENSYS-ARIN-02 (US)  \nCENSYS-ARIN-03 (US)  \nCHEAPY-HOST (US)  \nDIGITALOCEAN-ASN (US)  \nHURRICANE (US)  \nDMZHOST (GB)  \nDRIFTNET (GB)  \nSKYNET (GB)  \nVPSVAULTHOST (GB)  \nOnline SAS (FR)  \nONYPHE (FR)  \nOVH (FR)  \nALPHASTRIKE-HK (DE)  \nMETASPINNER-ASN (DE)  \nPFCLOUD (DE)  \nCAPL-AS-AP (SG)  \nYAHOO-SG3 (SG)  \nAGOTOZHKLIMITED-AS-AP (HK)  \nCTGSERVERLIMITED-AS-AP (HK)  \nHKBN-AS-AP (HK)  \nHUTCHISON-AS-AP (HK)  \nHWCLOUDS-AS-AP (HK)  \nPEOPLESPHONE-HK (HK)  \nUCLOUD-HK-AS-AP (HK)  \nGEMNET-MN (MN)  \nAS-GLOBALTELEHOST (CA)  \nBLACKHOST (CA)  \nDCC (BG)  \nDM_AUTO (BG)  \nTAMATIYA-AS (BG)  \nAS-BITSIGHT (PT)  \nEDGAR RODRIGUES ROMAO FILHO ME (BR)  \nTyna Host – Datacenter no Brasil (BR)  \nSUNUCUN (TR)  \nVLADYLSAV-NAUMETS (UA)  \nELITE-BD (BD)  \nFPS12 (RO)  \nM247 (RO)  \nHOSTBALTIC (LT) Nota:  No se incluyen AS de China, Rusia y Corea del Sur al encontrarse ya bloqueados a nivel de país. Nuevos países recomendados para bloqueo: Hong Kong Mongolia Bulgaria  (11 IPs detectadas, 100% reportadas) Seychelles Se adjunta documento con las evidencias. En el mismo se han marcado con color naranja los AS que podrían ser susceptibles de ser bloqueados, en un siguiente estudio. Muchas gracias. Un saludo. Rodrigo de la Vara Hernández Security Manager | Cybersecurity & Cloud Distrito Telefónica, Edif. Oeste 1, Planta 5. 28050 Madrid, España. Móvil. +34 630 819 907 |  rodrigo.delavarahernandez@telefonica.com tech.telefonica.com Este mensaje y sus adjuntos se dirigen exclusivamente a su destinatario, puede contener información privilegiada o confidencial y es para uso exclusivo de la persona o entidad de destino. Si no es usted. el destinatario indicado, queda notificado de que la lectura, utilización, divulgación y/o copia sin autorización puede estar prohibida en virtud de la legislación vigente. Si ha recibido este mensaje por error, le rogamos que nos lo comunique inmediatamente por esta misma vía y proceda a su destrucción. The information contained in this transmission is confidential and privileged information intended only for the use of the individual or entity named above. If the reader of this message is not the intended recipient, you are hereby notified that any dissemination, distribution or copying of this communication is strictly prohibited. If you have received this transmission in error, do not read it. Please immediately reply to the sender that you have received this communication in error and then delete it. Esta mensagem e seus anexos se dirigem exclusivamente ao seu destinatário, pode conter informação privilegiada ou confidencial e é para uso exclusivo da pessoa ou entidade de destino. Se não é vossa senhoria o destinatário indicado, fica notificado de que a leitura, utilização, divulgação e/ou cópia sem autorização pode estar proibida em virtude da legislação vigente. Se recebeu esta mensagem por erro, rogamos-lhe que nos o comunique imediatamente por esta mesma via e proceda a sua destruição Le informamos de que el responsable del tratamiento de sus datos es la entidad del Grupo Telefónica vinculada al remitente, con la finalidad de mantener el contacto profesional y gestionar la relación establecida con el destinatario o con la entidad a la que está vinculado. Puede contactar con el responsable del tratamiento y ejercitar sus derechos escribiendo a  privacidad.web@telefonica.com . Puede consultar información adicional sobre el tratamiento de sus datos en nuestra  Política de Privacidad . We inform you that the data controller is the Telefónica Group entity linked to the sender, for the purpose of maintaining professional contact and managing the relationship established with the recipient or with the entity to which it is linked. You may contact the data controller and exercise your rights by writing to  privacidad.web@telefonica.com . You may consult additional information on the processing of your data in our  Privacy Policy . Informamos que o responsável pelo tratamento dos seus dados é a entidade do Grupo Telefónica vinculada ao remetente, a fim de manter o contato professional e administrar a relação estabelecida com o destinatário ou com a entidade à qual esteja vinculado. Você pode entrar em contato com o responsável do tratamento de dados e exercer os seus direitos escrevendo a  privacidad.web@telefonica.com . Você pode consultar informação adicional sobre o tratamento do seus dados na nossa  Política de Privacidade .",
+      "updated": "2025-11-13T09:46:26.249+0100"
+    },
+    {
+      "key": "CYB-191",
+      "summary": "2025_AI_27001_NC_02 Revisión por la Dirección año 2025",
+      "status": "En curso",
+      "priority": "Crítica",
+      "description": "",
+      "updated": "2025-11-13T09:42:35.855+0100"
+    },
+    {
+      "key": "CYB-301",
+      "summary": "2025_AI_9001_OFI_01 Revisión por Dirección",
+      "status": "En curso",
+      "priority": "Importante",
+      "description": "Nº 1:Si bien la reunión cubre de manera amplia los requisitos de la cláusula 9.3, no se reflejan de forma explícita: La revisión de la satisfacción del cliente o retroalimentación de partes interesadas externas. Los cambios en cuestiones internas y externas que puedan afectar al sistema de gestión. Una conclusión global de la Dirección respecto a la eficacia y conveniencia del sistema de gestión de la calidad. Incluir en futuras reuniones estos elementos como punto específico del orden del día.",
+      "updated": "2025-11-13T09:42:25.036+0100"
+    },
+    {
+      "key": "CYB-84",
+      "summary": "Reunión con Arturo para validar",
+      "status": "Tareas por hacer",
+      "priority": "Leve",
+      "description": "",
+      "updated": "2025-11-12T20:46:35.390+0100"
+    },
+    {
+      "key": "CYB-157",
+      "summary": "GT Unespa",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-11-11T10:11:44.173+0100"
+    },
+    {
+      "key": "CYB-6",
+      "summary": "2025_ENS_AE_NC_02 Configuración de Seguridad",
+      "status": "Hecho",
+      "priority": "Crítica",
+      "description": "2025_ENS_AE_NC_02 Configuración de Seguridad Documento de bastionado y asegurarse de que han incluido reglas de mínimo privilegio y seguridad por defecto. Bastionado de al menos un equipo.",
+      "updated": "2025-11-06T09:41:35.722+0100"
+    },
+    {
+      "key": "CYB-345",
+      "summary": "Bloqueo escaneos mensaelect",
+      "status": "Pruebas",
+      "priority": "Media",
+      "description": "Desde mensaelecte se realizar escaneos programados hacia su propio housing y es necesario bloquearlos.",
+      "updated": "2025-10-29T15:38:47.670+0100"
+    },
+    {
+      "key": "CYB-161",
+      "summary": "Presentación GT Unespa",
+      "status": "Hecho",
+      "priority": "Crítica",
+      "description": "La presentación está disponible en este link:  Encuentro CISOS-OCT-25.pptx",
+      "updated": "2025-10-29T15:38:37.055+0100"
+    },
+    {
+      "key": "CYB-269",
+      "summary": "Agendar audio para equipo SOC de telefonica con Arturo / multitenant RSA",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-10-29T15:38:22.680+0100"
+    },
+    {
+      "key": "CYB-151",
+      "summary": "Presentación encuentro",
+      "status": "Hecho",
+      "priority": "Crítica",
+      "description": "Generar presentación para encuentro de CISOS",
+      "updated": "2025-10-28T14:31:56.142+0100"
+    },
+    {
+      "key": "CYB-20",
+      "summary": "Cuestionario: Zurich - Due Dilligence CyberGRX",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-10-15T09:38:46.237+0200"
+    },
+    {
+      "key": "CYB-352",
+      "summary": "Validar contenido con la Direción",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-10-10T12:38:56.771+0200"
+    },
+    {
+      "key": "CYB-56",
+      "summary": "Cuestionario: Enviar evidencias de cuestionario AEGON - CIMA (52 Q)",
+      "status": "Hecho",
+      "priority": "Importante",
+      "description": "",
+      "updated": "2025-10-10T12:30:00.677+0200"
+    },
+    {
+      "key": "CYB-85",
+      "summary": "Firma del contrato de Gestión de Identidades con Telefónica",
+      "status": "Hecho",
+      "priority": "Crítica",
+      "description": "Firma y arranque del proyecto de gestión de identidades con CiberArk para los corredores y mediadores. ",
+      "updated": "2025-10-01T09:33:21.653+0200"
+    }
+  ],
+  "emails": [],
+  "summary": {
+    "total_tasks": 24,
+    "total_emails": 0,
+    "tasks_by_status": {
+      "Hecho": 10,
+      "Backlog": 2,
+      "Pruebas": 7,
+      "BLOCKED": 2,
+      "En curso": 2,
+      "Tareas por hacer": 1
+    },
+    "tasks_by_priority": {
+      "Importante": 14,
+      "Media": 2,
+      "Leve": 2,
+      "Alta": 1,
+      "Crítica": 5
+    }
+  }
+}
