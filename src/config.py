@@ -52,6 +52,15 @@ class Settings(BaseSettings):
         description="Default model name for OpenAI-compatible chat completions.",
     )
 
+    # Microsoft / Azure Configuration
+    MS_CLIENT_ID: str = Field(default="", description="Azure Client ID")
+    MS_CLIENT_SECRET: str = Field(default="", description="Azure Client Secret")
+    MS_AUTHORITY: str = Field(
+        default="https://login.microsoftonline.com/common",
+        description="Azure Authority URL",
+    )
+    MS_SCOPES: str = Field(default="Mail.Read", description="Azure Scopes (space separated)")
+
     # Memory Configuration
     MEMORY_FILE: str = "agent_memory.json"
 
