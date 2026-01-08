@@ -68,6 +68,14 @@ class Settings(BaseSettings):
         description="Absolute path to Obsidian vault directory",
     )
 
+    # =========================================================================
+    # Output Configuration
+    # =========================================================================
+    ARTIFACTS_DIR: str = Field(
+        default="artifacts",
+        description="Directory to store generated artifacts (JSON, Markdown, etc.)",
+    )
+
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parent.parent / ".env"),
         env_file_encoding="utf-8",

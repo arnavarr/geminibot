@@ -36,7 +36,7 @@ class DataCollector:
 
     def __init__(self):
         self.settings = settings
-        self.artifacts_dir = PROJECT_ROOT / "artifacts"
+        self.artifacts_dir = Path(self.settings.ARTIFACTS_DIR)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         
         print(f"📊 DataCollector inicializado")
