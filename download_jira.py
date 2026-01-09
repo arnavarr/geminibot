@@ -12,7 +12,10 @@ def download_jira_issues():
     url = 'https://tirea.atlassian.net/rest/api/3/search/jql'
     
     jira_token = os.getenv('JIRA_TOKEN')
-    output_file = 'issues.json'
+    
+    # Configurar ruta de salida usando ARTIFACTS_DIR
+    artifacts_dir = os.getenv('ARTIFACTS_DIR', '.')
+    output_file = os.path.join(artifacts_dir, 'issues.json')
 
     if not jira_token:
         print("Error: No se encontró la variable JIRA_TOKEN en el archivo .env")
@@ -54,11 +57,24 @@ def download_jira_issues():
 
         data = response.json()
         
+        # Verificar si Jira nos devolvió advertencias sobre el JQL
+        if 'warningMessages' in data and data['warningMessages']:
+            print("\n--- ADVERTENCIAS DE JIRA ---")
+            for warning in data['warningMessages']:
+                print(f"⚠️  {warning}")
+            print("------------------------------\n")
+
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
             
+        issues_count = len(data.get('issues', []))
         print(f"¡Éxito! Archivo guardado en: {output_file}")
-        print(f"Total de issues recuperados: {len(data.get('issues', []))}")
+        print(f"Total de issues recuperados: {issues_count}")
+
+        if issues_count == 0:
+            print("\n[DIAGNOSTICO] La búsqueda no arrojó resultados.")
+            print("Sugiero probar temporalmente un JQL más amplio para verificar permisos.")
+            print("Ejemplo: Cambia 'jql' en el código a simplemente 'order by created DESC'")
 
     except requests.exceptions.HTTPError as http_err:
         print(f"Error HTTP: {http_err}")
