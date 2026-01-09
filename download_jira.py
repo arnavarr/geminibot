@@ -41,7 +41,9 @@ def download_jira_issues():
     # Hemos eliminado "expand" y cambiado "fields" por una lista explícita.
     # "*all" a menudo causa errores de validación en este endpoint.
     payload = {
-        "jql": "project in (CYB, PRO40, PRO44) ORDER BY created DESC",
+        # JQL DE PRUEBA: Buscamos CUALQUIER tarea visible para verificar permisos.
+        # JQL ANTERIOR: "project in (CYB, PRO40, PRO44) ORDER BY created DESC"
+        "jql": "ORDER BY created DESC",
         "maxResults": 50, # Reducido a 50 para asegurar estabilidad
         "fields": [
             "summary", 
