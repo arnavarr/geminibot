@@ -17,6 +17,15 @@ def download_jira_issues():
     artifacts_dir = os.getenv('ARTIFACTS_DIR', '.')
     output_file = os.path.join(artifacts_dir, 'issues.json')
 
+    # CORRECCIÓN: Crear el directorio si no existe para evitar error "No such file or directory"
+    if artifacts_dir and artifacts_dir != '.':
+        try:
+            os.makedirs(artifacts_dir, exist_ok=True)
+            print(f"Directorio verificado/creado: {artifacts_dir}")
+        except OSError as e:
+            print(f"Error crítico: No se pudo crear el directorio {artifacts_dir}. Detalles: {e}")
+            return
+
     if not jira_token:
         print("Error: No se encontró la variable JIRA_TOKEN en el archivo .env")
         return
