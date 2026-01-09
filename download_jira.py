@@ -14,7 +14,7 @@ def download_jira_issues():
     jira_token = os.getenv('JIRA_TOKEN')
     
     # Configurar ruta de salida usando ARTIFACTS_DIR
-    artifacts_dir = os.getenv('ARTIFACTS_DIR', '.')
+    artifacts_dir = os.getenv('OBSIDIAN_VAULT_PATH', '.')
     output_file = os.path.join(artifacts_dir, 'issues.json')
 
     # CORRECCIÓN: Crear el directorio si no existe para evitar error "No such file or directory"
