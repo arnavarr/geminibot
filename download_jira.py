@@ -8,13 +8,12 @@ load_dotenv()
 
 def download_jira_issues():
     # 1. Configuración
-    # El servidor indicó explícitamente usar /search/jql debido al error 410 en /search
+    # Usamos /search/jql ya que /search devolvió 410 (Gone)
     url = 'https://tirea.atlassian.net/rest/api/3/search/jql'
     
     jira_token = os.getenv('JIRA_TOKEN')
     output_file = 'issues.json'
 
-    # Validación básica
     if not jira_token:
         print("Error: No se encontró la variable JIRA_TOKEN en el archivo .env")
         return
@@ -26,46 +25,51 @@ def download_jira_issues():
         'Content-Type': 'application/json'
     }
 
-    # 3. Preparar el Payload
-    # CORRECCIÓN: maxResults se ha reducido a 100.
-    # Solicitar 1000 suele causar un error 400 (Bad Request) porque supera el límite de la API.
+    # 3. Preparar el Payload (Simplificado para evitar Error 400)
+    # Hemos eliminado "expand" y cambiado "fields" por una lista explícita.
+    # "*all" a menudo causa errores de validación en este endpoint.
     payload = {
         "jql": "project in (CYB, PRO40, PRO44) ORDER BY created DESC",
-        "maxResults": 100, 
-        "fields": ["*all"],
-        "expand": ["renderedFields", "changelog", "comments"]
+        "maxResults": 50, # Reducido a 50 para asegurar estabilidad
+        "fields": [
+            "summary", 
+            "status", 
+            "created", 
+            "priority", 
+            "assignee", 
+            "description"
+        ]
+        # Si el script funciona, puedes probar a descomentar la siguiente línea:
+        # "expand": ["changelog", "comments"] 
     }
 
     print(f"Conectando a {url}...")
+    # Debug: Imprimir lo que vamos a enviar (útil para diagnosticar el error 400)
+    print(f"Enviando payload: {json.dumps(payload)}")
 
     try:
-        # 4. Ejecutar la petición POST
         response = requests.post(url, json=payload, headers=headers)
         
-        # Lanzar excepción si hay error HTTP (4xx, 5xx)
         response.raise_for_status()
 
-        # 5. Guardar el resultado en issues.json
         data = response.json()
         
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
             
-        print(f"¡Éxito! Archivo guardado correctamente en: {output_file}")
-        print(f"Total de issues recuperados en esta página: {len(data.get('issues', []))}")
+        print(f"¡Éxito! Archivo guardado en: {output_file}")
+        print(f"Total de issues recuperados: {len(data.get('issues', []))}")
 
     except requests.exceptions.HTTPError as http_err:
         print(f"Error HTTP: {http_err}")
-        print(f"Código de estado: {response.status_code}")
+        print(f"Código: {response.status_code}")
         try:
-            # Intentar mostrar el mensaje de error específico de Jira
-            error_response = response.json()
-            print(f"Detalles del error (JSON): {json.dumps(error_response, indent=2)}")
+            print(f"Detalles del error: {json.dumps(response.json(), indent=2)}")
         except:
-            print(f"Respuesta del servidor (texto): {response.text}")
+            print(f"Respuesta cruda: {response.text}")
             
     except Exception as err:
-        print(f"Ocurrió un error inesperado: {err}")
+        print(f"Error inesperado: {err}")
 
 if __name__ == "__main__":
     download_jira_issues()
