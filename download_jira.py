@@ -8,9 +8,8 @@ load_dotenv()
 
 def download_jira_issues():
     # 1. Configuración
-    # CORRECCIÓN: La URL estándar de Jira para búsquedas POST es /rest/api/3/search
-    # La URL anterior /rest/api/3/search/jql causaba error 400 por payload inválido.
-    url = 'https://tirea.atlassian.net/rest/api/3/search'
+    # El servidor indicó explícitamente usar /search/jql debido al error 410 en /search
+    url = 'https://tirea.atlassian.net/rest/api/3/search/jql'
     
     jira_token = os.getenv('JIRA_TOKEN')
     output_file = 'issues.json'
@@ -20,19 +19,19 @@ def download_jira_issues():
         print("Error: No se encontró la variable JIRA_TOKEN en el archivo .env")
         return
 
-    # 2. Preparar Headers (equivalente a -H)
-    # Se asume que JIRA_TOKEN ya es la cadena codificada en Base64 si el curl usa 'Basic JIRA_TOKEN'
-    # Si JIRA_TOKEN es solo el API token, habría que codificarlo (email:token) en base64 aquí.
+    # 2. Preparar Headers
     headers = {
         'Authorization': f'Basic {jira_token}',
         'Accept': 'application/json',
         'Content-Type': 'application/json'
     }
 
-    # 3. Preparar el Payload (Data - equivalente a --data)
+    # 3. Preparar el Payload
+    # CORRECCIÓN: maxResults se ha reducido a 100.
+    # Solicitar 1000 suele causar un error 400 (Bad Request) porque supera el límite de la API.
     payload = {
         "jql": "project in (CYB, PRO40, PRO44) ORDER BY created DESC",
-        "maxResults": 1000,
+        "maxResults": 100, 
         "fields": ["*all"],
         "expand": ["renderedFields", "changelog", "comments"]
     }
@@ -50,14 +49,21 @@ def download_jira_issues():
         data = response.json()
         
         with open(output_file, 'w', encoding='utf-8') as f:
-            # indent=4 hace que el JSON sea legible para humanos
             json.dump(data, f, ensure_ascii=False, indent=4)
             
         print(f"¡Éxito! Archivo guardado correctamente en: {output_file}")
+        print(f"Total de issues recuperados en esta página: {len(data.get('issues', []))}")
 
     except requests.exceptions.HTTPError as http_err:
         print(f"Error HTTP: {http_err}")
-        print(f"Respuesta del servidor: {response.text}")
+        print(f"Código de estado: {response.status_code}")
+        try:
+            # Intentar mostrar el mensaje de error específico de Jira
+            error_response = response.json()
+            print(f"Detalles del error (JSON): {json.dumps(error_response, indent=2)}")
+        except:
+            print(f"Respuesta del servidor (texto): {response.text}")
+            
     except Exception as err:
         print(f"Ocurrió un error inesperado: {err}")
 
