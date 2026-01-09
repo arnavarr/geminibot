@@ -8,9 +8,9 @@ load_dotenv()
 
 def download_jira_issues():
     # 1. Configuración
-    # URL proporcionada en el curl (Nota: La API estándar suele ser /rest/api/3/search, 
-    # pero respetamos la URL /search/jql solicitada).
-    url = 'https://tirea.atlassian.net/rest/api/3/search/jql'
+    # CORRECCIÓN: La URL estándar de Jira para búsquedas POST es /rest/api/3/search
+    # La URL anterior /rest/api/3/search/jql causaba error 400 por payload inválido.
+    url = 'https://tirea.atlassian.net/rest/api/3/search'
     
     jira_token = os.getenv('JIRA_TOKEN')
     output_file = 'issues.json'
